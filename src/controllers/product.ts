@@ -1,11 +1,36 @@
 import { Request } from "express";
+import { myCache } from "../app.js";
 import { TryCatch } from "../middlewares/error.js";
 import { Product } from "../models/product.js";
 import { NewProductRequestBody, SearchQueryType, SearchRequestType } from "../types/types.js";
+import { deleteFilesFromCloudinary, invalidateCache, uploadFilesToCloudinary } from "../utils/features.js";
 import ErrorHandler from "../utils/utility-class.js";
-import { rm } from "fs"
-import { myCache } from "../app.js";
-import { invalidateCache } from "../utils/features.js";
+
+// export const newProduct = TryCatch(async (req: Request<{}, {}, NewProductRequestBody>, res, next) => {
+//     const { name, stock, price, category } = req.body;
+//     const photo = req.file;
+
+//     if (!photo) return next(new ErrorHandler("Please add Photo", 404));
+
+//     if (!name || !stock || !price || !category) {
+//         rm(photo.path, () => {
+//             console.log("removed photo")
+//         })
+
+//         return next(new ErrorHandler("Please add all fields", 404));
+//     }
+
+//     await Product.create({
+//         name, photo: photo.path, stock, price, category: category.toLowerCase()
+//     })
+
+//     invalidateCache({ product: true, admin: true })
+
+//     return res.status(201).json({
+//         success: true,
+//         message: "Product created successfully"
+//     })
+// })
 
 export const newProduct = TryCatch(async (req: Request<{}, {}, NewProductRequestBody>, res, next) => {
     const { name, stock, price, category } = req.body;
@@ -13,15 +38,18 @@ export const newProduct = TryCatch(async (req: Request<{}, {}, NewProductRequest
 
     if (!photo) return next(new ErrorHandler("Please add Photo", 404));
 
-    if (!name || !stock || !price || !category) {
-        rm(photo.path, () => {
-            console.log("removed photo")
-        })
+    const result= await uploadFilesToCloudinary([photo])
 
-        return next(new ErrorHandler("Please add all fields", 404));
-    }
     await Product.create({
-        name, photo: photo.path, stock, price, category: category.toLowerCase()
+        name,
+        stock,
+        price,
+        category: category.toLowerCase(),
+        photo: {
+            url:result[0].url,
+            public_id:result[0].public_id
+        },
+
     })
 
     invalidateCache({ product: true, admin: true })
@@ -109,42 +137,82 @@ export const getSingleProduct = TryCatch(
 
         })
     })
+
 export const deleteProduct = TryCatch(async (req, res, next) => {
     const { id } = req.params;
     let product = await Product.findById(id);
 
     if (!product) return next(new ErrorHandler("Product not found", 404));
 
-    rm(product.photo, () => {
-        console.log("Removed photo of deleted product.")
-    })
+    // rm(product.photo, () => {
+    //     console.log("Removed photo of deleted product.")
+    // })
+
+    // Now remove photo from cloudinary
+    // await cloudinary.uploader.destroy(product.photo!.public_id);
+    await deleteFilesFromCloudinary([product.photo!.public_id])
+
     await product.deleteOne();
     invalidateCache({ product: true, admin: true, productId: id });
 
     return res.status(201).json({
         success: true,
-
         message: "Product deleted",
 
     })
 })
 
+// export const updateProduct = TryCatch(async (req, res, next) => {
+//     const { name, stock, price, category } = req.body;
+//     const photo = req.file;
+
+//     const { id } = req.params;
+//     let product = await Product.findById(id);
+//     if (!product) return next(new ErrorHandler("Product not found", 404));
+
+
+
+//     if (photo) {
+//         rm(product.photo, () => {
+//             console.log("removed old photo")
+//         })
+//         product.photo = photo.path;
+
+//     }
+
+//     if (name) product.name = name;
+//     if (price) product.price = price;
+//     if (stock) product.stock = stock;
+//     if (category) product.category = category;
+
+
+//     await product.save();
+
+//     invalidateCache({ product: true, admin: true, productId: id });
+
+//     return res.status(201).json({
+//         success: true,
+//         message: "Product updated successfully"
+//     })
+// })
+
 export const updateProduct = TryCatch(async (req, res, next) => {
     const { name, stock, price, category } = req.body;
     const photo = req.file;
+   
 
     const { id } = req.params;
     let product = await Product.findById(id);
     if (!product) return next(new ErrorHandler("Product not found", 404));
 
-
-
     if (photo) {
-        rm(product.photo, () => {
-            console.log("removed old photo")
-        })
-        product.photo = photo.path;
+        await deleteFilesFromCloudinary([product.photo!.public_id])
+        const result = await uploadFilesToCloudinary([photo]);
 
+        product.photo = {
+            url: result[0].url,
+            public_id: result[0].public_id
+        };
     }
 
     if (name) product.name = name;

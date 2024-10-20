@@ -11,14 +11,21 @@ import paymentRoute from "./routes/payment.js";
 import dashboardRoute from "./routes/stats.js";
 import Stripe from "stripe";
 import cors from "cors";
+import {v2 as cloudinary} from "cloudinary"
 
 
 
 dotenv.config({
     path: "./.env"
 })
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+})
 
 const mongo_uri = process.env.MONGO_URI || "";
+console.log(mongo_uri)
 const stripekey = process.env.STRIPE_KEY || "";
 const port = process.env.PORT || 4000;
 

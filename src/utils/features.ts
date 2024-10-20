@@ -1,4 +1,7 @@
 import mongoose, { Document } from "mongoose"
+import { v4 } from 'uuid'; 
+import {v2 as cloudinary} from 'cloudinary'; 
+
 import { myCache } from "../app.js"
 import { Product } from "../models/product.js"
 import { invalidateCacheProps, orderItemsType } from "../types/types.js"
@@ -141,3 +144,60 @@ export const getBarChartData = ({ arr, length, property }:
 
     return data;
 }
+
+
+
+interface File {
+    mimetype: string;
+    buffer: Buffer; 
+}
+
+interface UploadResult {
+    public_id: string;
+    url: string;
+}
+
+export const getBase64 = (file:File): string => 
+    `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+
+export const uploadFilesToCloudinary = async (files: File[]): Promise<{ public_id: string; url: string }[]> => {
+    const uploadPromises = files.map(async (file) => {
+        try {
+            const result = await cloudinary.uploader.upload(getBase64(file), {
+                public_id: v4(), 
+                resource_type: "auto" 
+            });
+
+            return {
+                public_id: result.public_id,
+                url: result.secure_url
+            };
+        } catch (error) {
+            throw new Error(`Error in uploading file`);
+        }
+    });
+
+    try {
+        const results = await Promise.all(uploadPromises);
+        return results; 
+    } catch (err) {
+        console.log(err)
+        throw new Error("Error in uploading files to Cloudinary");
+    }
+};
+
+
+export const deleteFilesFromCloudinary = async (publicIds: string[]) => {
+    try {
+      const result = await cloudinary.api.delete_resources(publicIds);
+      
+      if (result.deleted) {
+        console.log('Deleted resources:', result.deleted);
+      } else {
+        console.error('Error deleting files from Cloudinary:', result);
+      }
+    } catch (error) {
+      console.error('Error deleting files from Cloudinary:', error);
+      throw new Error("Error in deleting files from Cloudinary");
+    }
+  };
