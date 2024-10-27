@@ -38,7 +38,7 @@ export const newProduct = TryCatch(async (req: Request<{}, {}, NewProductRequest
 
     if (!photo) return next(new ErrorHandler("Please add Photo", 404));
 
-    const result= await uploadFilesToCloudinary([photo])
+    const result= await uploadFilesToCloudinary([photo],"E-Commerce/Test")
 
     await Product.create({
         name,

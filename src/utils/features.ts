@@ -160,12 +160,13 @@ interface UploadResult {
 export const getBase64 = (file:File): string => 
     `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
 
-export const uploadFilesToCloudinary = async (files: File[]): Promise<{ public_id: string; url: string }[]> => {
+export const uploadFilesToCloudinary = async (files: File[],folder?:string): Promise<{ public_id: string; url: string }[]> => {
     const uploadPromises = files.map(async (file) => {
         try {
             const result = await cloudinary.uploader.upload(getBase64(file), {
                 public_id: v4(), 
-                resource_type: "auto" 
+                resource_type: "auto" ,
+                folder
             });
 
             return {

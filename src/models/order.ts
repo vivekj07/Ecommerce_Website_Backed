@@ -67,7 +67,16 @@ const schema = new mongoose.Schema(
         orderItems: [
             {
                 name: String,
-                photo: String,
+                photo: {
+                    url: {
+                        type: String,
+                        required: true,
+                    },
+                    public_id: {
+                        type: String,
+                        required: true,
+                    }
+                },
                 price: Number,
                 quantity: Number,
                 productId: {
